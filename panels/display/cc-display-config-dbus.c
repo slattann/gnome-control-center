@@ -35,6 +35,12 @@
 #define LOGICAL_MONITORS_FORMAT "a" LOGICAL_MONITOR_FORMAT
 
 #define CURRENT_STATE_FORMAT "(u" MONITORS_FORMAT LOGICAL_MONITORS_FORMAT "a{sv})"
+typedef enum _CcDisplayImageEnhancer
+{
+  IE_UNSUPPORTED = 0,
+  IE_DISABLED,
+  IE_ENABLED
+} CcDisplayImageEnhancer;
 
 typedef enum _CcDisplayModeFlags
 {
@@ -47,6 +53,7 @@ struct _CcDisplayModeDBus
 {
   CcDisplayMode parent_instance;
   CcDisplayMonitorDBus *monitor;
+  CcDisplayImageEnhancer ie_mode;
 
   char *id;
   int width;
@@ -603,6 +610,38 @@ cc_display_monitor_dbus_set_underscanning (CcDisplayMonitor *pself,
     self->underscanning = UNDERSCANNING_DISABLED;
 }
 
+//Image Enhancer functions:
+static gboolean
+cc_display_monitor_dbus_supports_image_enhancer (CcDisplayMonitor *pself)
+{
+  CcDisplayMonitorDBus *self = CC_DISPLAY_MONITOR_DBUS (pself);
+
+  return self->ie_mode != IE_UNSUPPORTED;
+}
+static gboolean
+cc_display_monitor_dbus_get_image_enhancer (CcDisplayMonitor *pself)
+{
+  CcDisplayMonitorDBus *self = CC_DISPLAY_MONITOR_DBUS (pself);
+
+  return self->ie_mode == IE_ENABLED;
+}
+
+static void
+cc_display_monitor_dbus_set_image_enhancer (CcDisplayMonitor *pself,
+                                                   gboolean enabled)
+{
+  CcDisplayMonitorDBus *self = CC_DISPLAY_MONITOR_DBUS (pself);
+
+//  if (self->ie_mode == IE_UNSUPPORTED)
+//    return;
+
+  if (enabled)
+    self->ie_mode = IE_ENABLED;
+  else
+    self->ie_mode = IE_DISABLED;
+}
+//Image Enhancer Functions Ended here:
+
 static CcDisplayMode *
 cc_display_monitor_dbus_get_closest_mode (CcDisplayMonitorDBus *self,
                                           CcDisplayModeDBus *mode)
@@ -715,6 +754,7 @@ static void
 cc_display_monitor_dbus_init (CcDisplayMonitorDBus *self)
 {
   self->underscanning = UNDERSCANNING_UNSUPPORTED;
+  self->ie_mode = IE_ENABLED;
   self->max_width = G_MAXINT;
   self->max_height = G_MAXINT;
 }
@@ -772,6 +812,11 @@ cc_display_monitor_dbus_class_init (CcDisplayMonitorDBusClass *klass)
   parent_class->set_position = cc_display_monitor_dbus_set_position;
   parent_class->get_scale = cc_display_monitor_dbus_get_scale;
   parent_class->set_scale = cc_display_monitor_dbus_set_scale;
+#if 1
+  parent_class->supports_image_enhancer = cc_display_monitor_dbus_supports_image_enhancer;
+  parent_class->get_image_enhancer = cc_display_monitor_dbus_get_image_enhancer;
+  parent_class->set_image_enhancer = cc_display_monitor_dbus_set_image_enhancer;
+#endif  
 }
 
 static void
@@ -844,6 +889,16 @@ cc_display_monitor_dbus_new (GVariant *variant,
           else
             self->underscanning = UNDERSCANNING_DISABLED;
         }
+      else if (g_str_equal (s, "is-ie-enabled"))
+        {
+	printf("[ImageEnhancer] [%s:%d] \n", __func__,__LINE__);		
+          gboolean ie_enabled = FALSE;
+          g_variant_get (v, "b", &ie_enabled);
+          if (ie_enabled)
+            self->ie_mode = IE_ENABLED;
+          else
+            self->ie_mode = IE_DISABLED;
+        }      
       else if (g_str_equal (s, "max-screen-size"))
         {
           g_variant_get (v, "ii", &self->max_width, &self->max_height);
@@ -943,6 +998,11 @@ build_monitors_variant (GHashTable *monitors)
       g_variant_builder_add (&props_builder, "{sv}",
                              "underscanning",
                              g_variant_new_boolean (monitor->underscanning == UNDERSCANNING_ENABLED));
+
+      printf("[ImageEnhancer] [%s:%d] Calling g_variant_builder_add for IE\n", __func__,__LINE__);
+      g_variant_builder_add (&props_builder, "{sv}",
+                             "enable_ie",
+                             g_variant_new_boolean (monitor->ie_mode == IE_ENABLED));      
 
       mode_dbus = CC_DISPLAY_MODE_DBUS (monitor->current_mode);
       g_variant_builder_add (&builder, "(ss@*)",
@@ -1076,6 +1136,9 @@ cc_display_config_dbus_equal (CcDisplayConfig *pself,
         return FALSE;
 
       if (m1->underscanning != m2->underscanning)
+        return FALSE;
+
+      if (m1->ie_mode != m2->ie_mode)
         return FALSE;
 
       if (!cc_display_logical_monitor_equal (m1->logical_monitor, m2->logical_monitor))

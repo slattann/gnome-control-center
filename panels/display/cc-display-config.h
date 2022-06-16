@@ -121,6 +121,14 @@ struct _CcDisplayMonitorClass
   gboolean          (*get_underscanning)      (CcDisplayMonitor  *self);
   void              (*set_underscanning)      (CcDisplayMonitor  *self,
                                                gboolean           u);
+
+#if 1
+  gboolean          (*supports_image_enhancer) (CcDisplayMonitor *self);
+  gboolean          (*get_image_enhancer)      (CcDisplayMonitor *self);
+  void              (*set_image_enhancer)      (CcDisplayMonitor *self,
+                                                       gboolean          u);
+#endif
+
   CcDisplayMode*    (*get_mode)               (CcDisplayMonitor  *self);
   CcDisplayMode*    (*get_preferred_mode)     (CcDisplayMonitor  *self);
   GList*            (*get_modes)              (CcDisplayMonitor  *self);
@@ -213,6 +221,13 @@ gboolean          cc_display_monitor_supports_underscanning (CcDisplayMonitor  *
 gboolean          cc_display_monitor_get_underscanning      (CcDisplayMonitor  *monitor);
 void              cc_display_monitor_set_underscanning      (CcDisplayMonitor  *monitor,
                                                              gboolean           underscanning);
+
+#if 1
+gboolean          cc_display_monitor_supports_image_enhancer(CcDisplayMonitor *monitor);
+gboolean          cc_display_monitor_get_image_enhancer     (CcDisplayMonitor *monitor);
+void              cc_display_monitor_set_image_enhancer     (CcDisplayMonitor *monitor,
+                                                                     gboolean          enabled);
+#endif
 
 CcDisplayMode*    cc_display_monitor_get_mode               (CcDisplayMonitor  *monitor);
 void              cc_display_monitor_get_geometry           (CcDisplayMonitor  *monitor,
